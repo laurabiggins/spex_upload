@@ -20,6 +20,15 @@ body {
     height: 20px;
 }
 
+.shinyalertmodal {
+  background-color: orange;
+}
+
+.sweet-alert h2 {
+    font-size: 20px;
+}
+
+
 .info_logo {
     float: left;
     width:  20px;
