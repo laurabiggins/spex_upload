@@ -1,9 +1,13 @@
 library(shiny)
+library(magrittr)
 
 data_location <- "inst/extdata/"
 
 bab_light_blue <- "#00aeef"
 bab_dark_blue <- "#1d305f"
+
+# libraries
+# shinyFeedback, shinyjs, shinyalert
 
 # UI ----
 ui <- tagList(
@@ -11,9 +15,10 @@ ui <- tagList(
   fluidPage(
     shinyFeedback::useShinyFeedback(),
     shinyjs::useShinyjs(),
-    tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "spex.css")
-    ),
+    shinyalert::useShinyalert(),
+    #tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "spex.css"),
+    #),
     theme = bslib::bs_theme(
       bg = bab_dark_blue,
       fg = "white",
@@ -184,7 +189,7 @@ server <- function(input, output, session) {
       rv$ds_summary <- ""
     }
     
-    ## metadata processing ----
+    ## metadata import ----
     if(!isTruthy(input$metadata_filepath)){
       shinyFeedback::feedbackWarning(
         inputId = "metadata_filepath",
@@ -194,7 +199,7 @@ server <- function(input, output, session) {
     } else {
       if(file.exists(input$metadata_filepath$datapath) & 
         tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv")) {
-        rv$meta_file <- switch(tools::file_ext(input$metadata_filepath$datapath), 
+        meta_file <- switch(tools::file_ext(input$metadata_filepath$datapath), 
                             tsv = ,
                             txt = readr::read_tsv(input$metadata_filepath$datapath),
                             csv = readr::read_csv(input$metadata_filepath$datapath),
@@ -215,25 +220,134 @@ server <- function(input, output, session) {
               show = !file.exists(input$metadata_filepath$datapath),
               text = paste0("Couldn't locate file: ", input$metadata_filepath$datapath)
             )
-          } else {
-            shinyFeedback::feedbackWarning(
-              inputId = "metadata_filepath",
-              show = !tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv"),
-              text = paste0("Metadata file type must be one of tsv, txt or csv, file type specified was ", tools::file_ext(input$metadata_filepath$datapath))
-            )
+            # shouldn't need this as it should be covered in the observeEvent(input$metadata_filepath$datapath, code
+          # } else {
+          #   shinyFeedback::feedbackWarning(
+          #     inputId = "metadata_filepath",
+          #     show = !tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv"),
+          #     text = paste0("Metadata file type must be one of tsv, txt or csv, file type specified was ", tools::file_ext(input$metadata_filepath$datapath))
+          #   )
           }
         }
     }        
 
+    ## dataset import ----
+    if(!isTruthy(input$data_filepath)){
+      shinyFeedback::feedbackWarning(
+        inputId = "data_filepath",
+        show = !isTruthy(input$data_filepath),
+        text = "Please select a data file."
+      )
+    } else {
+      if(file.exists(input$data_filepath$datapath) & 
+         tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv")) {
+        dataset <- switch(tools::file_ext(input$data_filepath$datapath), 
+                               tsv = ,
+                               txt = readr::read_tsv(input$data_filepath$datapath),
+                               csv = readr::read_csv(input$data_filepath$datapath),
+                               stop("Unknown file extension on data file")
+        )
+        shinyFeedback::hideFeedback("data_filepath")
+        shinyFeedback::feedbackSuccess(
+          inputId = "data_filepath",
+          show = TRUE,
+          text = "File successfully uploaded"
+        )
+      } else {
+        shinyFeedback::hideFeedback("data_filepath")
+        
+        if(!file.exists(input$data_filepath$datapath)){
+          shinyFeedback::feedbackWarning(
+            inputId = "data_filepath",
+            show = !file.exists(input$data_filepath$datapath),
+            text = paste0("Couldn't locate file: ", input$data_filepath$datapath)
+          )
+        }
+      }
+    }
+    
+    feature_column <- colnames(dataset)[1]
+    # change this to info message
+    print(paste0("Using the 1st column (named ", feature_column, ") as the feature names column."))
+    
+    ## initial dataset processing ----
+    # remove duplicates in feature names
+    if(anyDuplicated(dataset[[feature_column]]) > 0){
+      shinyalert::shinyalert(
+        "Duplicate feature names found. These will be removed. 
+        To avoid this, reformat the data outside this tool and upload again.", 
+        type = "info"
+      )
+      dataset <- dataset %>% 
+        dplyr::distinct(.data[[feature_column]], .keep_all = TRUE)
+    }
+    
+    # check for NAs in feature names
+    if(any(is.na(dataset[[feature_column]]))){
+      n_na <- sum(is.na(dataset[[feature_column]]))
+      shinyalert::shinyalert(
+        paste0(
+          n_na, 
+          " NA value(s) found in feature names, these will be removed. 
+          To avoid this, reformat the data outside this tool and upload again."
+        ),
+        type = "info",
+        closeOnClickOutside = TRUE,
+        className = "shinyalertmodal"
+      )
+      dataset <- tidyr::drop_na(dataset, .data[[feature_column]])
+    }
+    
+    # convert feature names to row names
+    dataset <- dataset %>%
+      tibble::column_to_rownames(feature_column)
+
+    
+    # # remove any columns that aren't in the data file
+    if(any(! meta_file[[1]] %in% colnames(dataset))){
+      n_not_in <- sum(!meta_file[[1]] %in% colnames(dataset))
+      print(
+        paste0(
+          "Found ", 
+          n_not_in, 
+          " sample names in metadata that were not in dataset and will be removed. Sample name(s) being removed: ",
+          paste0(meta_file[[1]][!meta_file[[1]] %in% colnames(dataset)], collapse = ", ")
+        )
+      )
+      meta_file <- meta_file[meta_file[[1]] %in% colnames(dataset), ]
+    }
+    
+    # # remove any sample name columns that aren't in the metadata file
+    if(any(! colnames(dataset) %in% meta_file[[1]])) {
+      n_not_in <- sum(!colnames(dataset) %in% meta_file[[1]])
+      shinyalert::shinyalert(
+        paste0(
+          "Found ", 
+          n_not_in, 
+          " sample names in dataset that were not in metadata and will be removed. Columns being kept are: ", 
+          paste0(colnames(dataset)[colnames(dataset) %in% meta_file[[1]]], collapse = ", "),
+          " Columns being removed are: ", 
+          paste0(colnames(dataset)[!colnames(dataset) %in% meta_file[[1]]], collapse = ", ")
+        ),
+        type = "info",
+        closeOnClickOutside = TRUE,
+        className = "shinyalertmodal"
+      )
+      dataset <- dplyr::select(dataset, all_of(meta_file[[1]]))
+    }
+    
+    
+
+
+    
+    
+    
     
     # other_columns <- colnames(meta_file)[-1]
     # 
     # new_folder_path <- paste0("inst/extdata/", new_folder_name)
     # dir.create(new_folder_path)
     # outfile_meta <- paste0(new_folder_path, "/metadata.rds")
-    
-    
-    
     
     x <- jsonlite::fromJSON(txt = "inst/extdata/updated_arrays.txt")
     
@@ -243,9 +357,30 @@ server <- function(input, output, session) {
   
   })
   
+  ## dataset processing ----
+  #  observe({ 
+  processed_dataset <- reactive({
+ 
+    dataset <- rv$data_file
+    
+    # check if the data should be log transformed
+    data_vector <- unlist(dataset)
+    shapiro_result <- shapiro.test(sample(data_vector, size = 5000))
+    if(shapiro_result$p.value < 0.01) {
+      print("Might want to log transform this data")
+    }
+    qqnorm(sample(data_vector, size = 5000))
+    
+    dataset <- log2(dataset)
+    
+    if(any(dataset == "-Inf")) {
+      print("-Inf values created, we'll change these to 0")
+      dataset[dataset == "-Inf"] <-  0
+    }
+    
+  })
   
-  
-  
+
   observeEvent(input$metadata_filepath$datapath, {
     if(isTruthy(input$metadata_filepath)){
       shinyFeedback::hideFeedback("metadata_filepath")
@@ -269,7 +404,28 @@ server <- function(input, output, session) {
     }
   })
   
-  
+  observeEvent(input$data_filepath$datapath, {
+    if(isTruthy(input$data_filepath)){
+      shinyFeedback::hideFeedback("data_filepath")
+      
+      if(tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv")){
+        shinyFeedback::feedbackSuccess(
+          inputId = "data_filepath",
+          show = TRUE,
+          text = "Happy with the file type"
+        )
+      } else {
+        shinyFeedback::feedbackWarning(
+          inputId = "data_filepath",
+          show = !tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv"),
+          text = paste0(
+            "Data file type must be one of tsv, txt or csv, file type specified was ",
+            tools::file_ext(input$data_filepath$datapath)
+          )
+        )
+      }
+    }
+  })
   
   
   
