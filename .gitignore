@@ -1,0 +1,6 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+data-raw/
+inst/extdata/updated_arrays.txt
