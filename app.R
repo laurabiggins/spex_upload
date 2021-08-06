@@ -135,7 +135,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$go, {
     
-    # validation ---
+    # validation 1 - check input fields look ok ---
     ## dataset name ----
     
     if(nchar(input$dataset_name) > 1) {
@@ -189,82 +189,110 @@ server <- function(input, output, session) {
       rv$ds_summary <- ""
     }
     
-    ## metadata import ----
+    ## metadata  ----
     if(!isTruthy(input$metadata_filepath)){
       shinyFeedback::feedbackWarning(
         inputId = "metadata_filepath",
         show = !isTruthy(input$metadata_filepath),
         text = "Please select a metadata file."
       )
-    } else {
-      if(file.exists(input$metadata_filepath$datapath) & 
-        tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv")) {
-        meta_file <- switch(tools::file_ext(input$metadata_filepath$datapath), 
-                            tsv = ,
-                            txt = readr::read_tsv(input$metadata_filepath$datapath),
-                            csv = readr::read_csv(input$metadata_filepath$datapath),
-                            stop("Unknown file extension on data file")
-        )
-        shinyFeedback::hideFeedback("metadata_filepath")
-        shinyFeedback::feedbackSuccess(
-          inputId = "metadata_filepath",
-          show = TRUE,
-          text = "File successfully uploaded"
-        )
-      } else {
-          shinyFeedback::hideFeedback("metadata_filepath")
-          
-          if(!file.exists(input$metadata_filepath$datapath)){
-            shinyFeedback::feedbackWarning(
-              inputId = "metadata_filepath",
-              show = !file.exists(input$metadata_filepath$datapath),
-              text = paste0("Couldn't locate file: ", input$metadata_filepath$datapath)
-            )
-            # shouldn't need this as it should be covered in the observeEvent(input$metadata_filepath$datapath, code
-          # } else {
-          #   shinyFeedback::feedbackWarning(
-          #     inputId = "metadata_filepath",
-          #     show = !tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv"),
-          #     text = paste0("Metadata file type must be one of tsv, txt or csv, file type specified was ", tools::file_ext(input$metadata_filepath$datapath))
-          #   )
-          }
-        }
-    }        
-
-    ## dataset import ----
+    } 
+    
+    ## dataset ----
     if(!isTruthy(input$data_filepath)){
       shinyFeedback::feedbackWarning(
         inputId = "data_filepath",
         show = !isTruthy(input$data_filepath),
         text = "Please select a data file."
       )
-    } else {
-      if(file.exists(input$data_filepath$datapath) & 
-         tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv")) {
-        dataset <- switch(tools::file_ext(input$data_filepath$datapath), 
-                               tsv = ,
-                               txt = readr::read_tsv(input$data_filepath$datapath),
-                               csv = readr::read_csv(input$data_filepath$datapath),
-                               stop("Unknown file extension on data file")
-        )
-        shinyFeedback::hideFeedback("data_filepath")
-        shinyFeedback::feedbackSuccess(
-          inputId = "data_filepath",
-          show = TRUE,
-          text = "File successfully uploaded"
-        )
-      } else {
-        shinyFeedback::hideFeedback("data_filepath")
-        
-        if(!file.exists(input$data_filepath$datapath)){
-          shinyFeedback::feedbackWarning(
-            inputId = "data_filepath",
-            show = !file.exists(input$data_filepath$datapath),
-            text = paste0("Couldn't locate file: ", input$data_filepath$datapath)
-          )
-        }
-      }
+    } 
+    
+    # stop if required fields aren't populated
+    req(nchar(input$dataset_name) > 1)
+    req(isTruthy(input$metadata_filepath))
+    req(isTruthy(input$data_filepath))
+    
+    # check meta and data files have different names ---
+    if(input$metadata_filepath$name == input$data_filepath$name){
+      shinyFeedback::hideFeedback("metadata_filepath")
+      shinyFeedback::feedbackDanger(
+        inputId = "metadata_filepath",
+        show = TRUE,
+        text = "Data file and metadata file have the same name, 
+            please choose a different file."
+      )
+      shinyFeedback::hideFeedback("data_filepath")
+      shinyFeedback::feedbackDanger(
+        inputId = "data_filepath",
+        show = TRUE,
+        text = "Data file and metadata file have the same name, 
+            please choose a different file."
+      )
     }
+    
+    req(input$metadata_filepath$name != input$data_filepath$name)
+    
+    ## check files exist ----
+    if(!file.exists(input$metadata_filepath$datapath)){
+      shinyFeedback::hideFeedback("metadata_filepath")
+      shinyFeedback::feedbackWarning(
+        inputId = "metadata_filepath",
+        show = !file.exists(input$metadata_filepath$datapath),
+        text = paste0("Couldn't locate file: ", input$metadata_filepath$datapath)
+      )
+    }
+    
+    if(!file.exists(input$data_filepath$datapath)){
+      shinyFeedback::hideFeedback("data_filepath")
+      shinyFeedback::feedbackWarning(
+        inputId = "data_filepath",
+        show = !file.exists(input$data_filepath$datapath),
+        text = paste0("Couldn't locate file: ", input$data_filepath$datapath)
+      )
+    }  
+    
+    req(file.exists(input$metadata_filepath$datapath))
+    req(file.exists(input$data_filepath$datapath))
+    req(tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv"))
+    req(tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv"))
+    
+    ## metadata import ----
+    meta_file <- switch(tools::file_ext(input$metadata_filepath$datapath), 
+                        tsv = ,
+                        txt = readr::read_tsv(input$metadata_filepath$datapath),
+                        csv = readr::read_csv(input$metadata_filepath$datapath),
+                        stop("Unknown file extension on data file")
+    )
+    shinyFeedback::hideFeedback("metadata_filepath")
+    shinyFeedback::feedbackSuccess(
+      inputId = "metadata_filepath",
+      show = TRUE,
+      text = "File successfully uploaded"
+    )
+ 
+    ## dataset import ----
+    dataset <- switch(tools::file_ext(input$data_filepath$datapath), 
+                           tsv = ,
+                           txt = readr::read_tsv(input$data_filepath$datapath),
+                           csv = readr::read_csv(input$data_filepath$datapath),
+                           stop("Unknown file extension on data file")
+    )
+    shinyFeedback::hideFeedback("data_filepath")
+    shinyFeedback::feedbackSuccess(
+      inputId = "data_filepath",
+      show = TRUE,
+      text = "File successfully uploaded"
+    )
+
+    if(!isTruthy(dataset)){
+      shinyalert::shinyalert("Couldn't import dataset for some reason.", type = "error")
+    }
+    if(!isTruthy(meta_file)){
+      shinyalert::shinyalert("Couldn't import dataset for some reason.", type = "error")
+    }
+    
+    req(dataset)
+    req(meta_file)
     
     feature_column <- colnames(dataset)[1]
     # change this to info message
@@ -335,12 +363,6 @@ server <- function(input, output, session) {
       )
       dataset <- dplyr::select(dataset, all_of(meta_file[[1]]))
     }
-    
-    
-
-
-    
-    
     
     
     # other_columns <- colnames(meta_file)[-1]
