@@ -1,14 +1,33 @@
-library(jsonlite)
-x <- jsonlite::fromJSON(txt = "inst/extdata/arrays.txt")
-ds_name <- "my new dataset"
-ds_citation <- "names and journal"
-ds_summary_info <- "some blurb here"
-ds_data_type <- "other"
-
-new_ds <- c(ds_name, ds_citation, ds_summary_info, ds_data_type)
-
-x$data <- rbind(x$data, new_ds)
-jsonlite::toJSON(x)
-jsonlite::write_json(x, path = "inst/extdata/updated_arrays.txt")
-
-
+#' process_metadata
+#' 
+#' Takes in metadata file and produces a list containing the original meta file
+#' along with some summary information.
+#'
+#' @param meta_dataset imported metadata file
+#' @param main_sample_name column name for the sample names
+#' @param other_cols the other columns that contain metadata that we want to use
+#'
+#' @return list of 3 
+#' * sample names
+#' * nested list of counts of each variable
+#' * whole metadata file
+#' @export
+#'
+#' @examples
+process_metadata <- function(meta_dataset, main_sample_name = "sample_name", other_cols = NA){
+  
+  meta_processed <- list(
+    sample_names = meta_dataset[[main_sample_name]],
+    meta_summary = list(
+      sample_name = dplyr::count(meta_dataset, .data[[main_sample_name]])
+    ),
+    meta_all = meta_dataset
+  )
+  
+  if(length(other_cols) > 0 & is.character(other_cols)){
+    for (i in other_cols) {
+      meta_processed$meta_summary[[i]] = dplyr::count(meta_dataset, .data[[i]])
+    }
+  }
+  meta_processed
+}
