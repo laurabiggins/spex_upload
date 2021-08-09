@@ -1,6 +1,19 @@
 library(shiny)
 library(magrittr)
 
+# TODO:
+# 1. error message when meta and data files are the same - add this to 
+# observeEvent(input$data_filepath$datapath, {
+# so it appears before Go is pressed.
+# 
+# 2. Confirmation when upload has been successful. - include link to spex main
+# 
+# 3. Condense the alerts into 1 information message, with a continue or cancel 
+# 
+# 4. Add more detail to info pop-ups.
+# 
+# 5. Write overall documentation so it could be sent to bioinf people to test out.
+
 data_location <- "inst/extdata/"
 
 bab_light_blue <- "#00aeef"
