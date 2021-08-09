@@ -331,10 +331,28 @@ server <- function(input, output, session) {
       tibble::column_to_rownames(feature_column)
 
     
+    # check sample names match with meta and data files ----
+    n_matched_samples <- sum(colnames(dataset) %in% meta_file[[1]])
+    
+    if(n_matched_samples < 2){
+      shinyalert::shinyalert(
+        paste0(
+          "Found ", 
+          n_matched_samples,  
+          " sample names that matched between metadata and dataset. 
+          A minimum of 2 are required. Check the sample names in the files and try again."
+        ),
+        type = "error",
+        closeOnClickOutside = TRUE,
+        className = "shinyalertmodal"
+      )
+    }
+    req(n_matched_samples >= 2)
+    
     # # remove any columns that aren't in the data file
     if(any(! meta_file[[1]] %in% colnames(dataset))){
       n_not_in <- sum(!meta_file[[1]] %in% colnames(dataset))
-      print(
+      shinyalert::shinyalert(
         paste0(
           "Found ", 
           n_not_in, 
@@ -345,9 +363,10 @@ server <- function(input, output, session) {
       meta_file <- meta_file[meta_file[[1]] %in% colnames(dataset), ]
     }
     
-    # # remove any sample name columns that aren't in the metadata file
+    #  remove any sample name columns that aren't in the metadata file
     if(any(! colnames(dataset) %in% meta_file[[1]])) {
       n_not_in <- sum(!colnames(dataset) %in% meta_file[[1]])
+      
       shinyalert::shinyalert(
         paste0(
           "Found ", 
@@ -364,44 +383,71 @@ server <- function(input, output, session) {
       dataset <- dplyr::select(dataset, all_of(meta_file[[1]]))
     }
     
+    rv$data_file <- dataset
+    rv$metadata_file <- meta_file
     
-    # other_columns <- colnames(meta_file)[-1]
-    # 
-    # new_folder_path <- paste0("inst/extdata/", new_folder_name)
-    # dir.create(new_folder_path)
-    # outfile_meta <- paste0(new_folder_path, "/metadata.rds")
+    # save metadata and dataset as .rds files -----
+    req(processed_dataset())
     
+    req(processed_metadata())
+    
+    new_folder_path <- paste0("inst/extdata/", rv$ds_name)
+    dir.create(new_folder_path)
+    
+    outfile_meta <- paste0(new_folder_path, "/metadata.rds")
+    saveRDS(processed_metadata(), outfile_meta)
+    outfile_data <- paste0(new_folder_path, "/dataset.rds")  
+    saveRDS(processed_dataset(), outfile_data)
+    
+    # write out json file ----
     x <- jsonlite::fromJSON(txt = "inst/extdata/updated_arrays.txt")
-    
     new_ds <- c(rv$ds_name, rv$ds_citation, rv$ds_summary_info, rv$ds_data_type)
     x$data <- rbind(x$data, new_ds)
     jsonlite::write_json(x, path = "inst/extdata/updated_arrays.txt")
+    
   
   })
   
   ## dataset processing ----
-  #  observe({ 
   processed_dataset <- reactive({
  
     dataset <- rv$data_file
     
     # check if the data should be log transformed
     data_vector <- unlist(dataset)
-    shapiro_result <- shapiro.test(sample(data_vector, size = 5000))
+    
+    sample_size <- dplyr::if_else(length(data_vector) <= 5000, length(data_vector), as.integer(5000))
+    
+    sample_vector <- sample(data_vector, size = sample_size)
+    shapiro_result <- shapiro.test(sample_vector)
+    
     if(shapiro_result$p.value < 0.01) {
-      print("Might want to log transform this data")
+      #print("Data looks like it should be log transformed.")
+    
+     # qqnorm(sample_vector)
+      #qqnorm(log2(sample_vector))
+      
+      #browser()
+      
+      dataset <- log2(dataset)
+ 
+      if(any(dataset == "-Inf")) {
+        print("-Inf values created, we'll change these to 0")
+        dataset[dataset == "-Inf"] <-  0
+      }
+      print("Data has been log2 transformed.")
+      #print(head(dataset))
     }
-    qqnorm(sample(data_vector, size = 5000))
-    
-    dataset <- log2(dataset)
-    
-    if(any(dataset == "-Inf")) {
-      print("-Inf values created, we'll change these to 0")
-      dataset[dataset == "-Inf"] <-  0
-    }
-    
+    dataset
   })
   
+  
+  ## metadata processing ----
+  processed_metadata <- reactive({
+    metadata <- process_metadata(
+      meta_dataset = rv$metadata_file
+    ) 
+  })
 
   observeEvent(input$metadata_filepath$datapath, {
     if(isTruthy(input$metadata_filepath)){
