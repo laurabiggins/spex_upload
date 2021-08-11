@@ -2,13 +2,14 @@ library(shiny)
 library(magrittr)
 
 # TODO:
-# 1. error message when meta and data files are the same - add this to 
+# DONE 1. error message when meta and data files are the same - add this to 
 # observeEvent(input$data_filepath$datapath, {
 # so it appears before Go is pressed.
 # 
 # 2. Confirmation when upload has been successful. - include link to spex main
 # 
-# 3. Condense the alerts into 1 information message, with a continue or cancel 
+# 3. Condense the alerts into 1 information message, with a continue or cancel.
+# Add more info here - not just the bad stuff but general info. 
 # 
 # 4. Add more detail to info pop-ups.
 # 
@@ -120,7 +121,7 @@ ui <- tagList(
           textAreaInput(
             inputId = "summary",
             label = "Enter summary information",
-            height = "200px"
+            height = "150px"
           ),
         ),
         column(
@@ -150,6 +151,9 @@ server <- function(input, output, session) {
     
     # validation 1 - check input fields look ok ---
     ## dataset name ----
+    
+    # need this here to take precedence over other css
+    rv$info_log <- '<p style="color:blue; font-size:16px; text-align: left;">'
     
     if(nchar(input$dataset_name) > 1) {
       rv$ds_name <- input$dataset_name
@@ -225,24 +229,6 @@ server <- function(input, output, session) {
     req(isTruthy(input$metadata_filepath))
     req(isTruthy(input$data_filepath))
     
-    # check meta and data files have different names ---
-    if(input$metadata_filepath$name == input$data_filepath$name){
-      shinyFeedback::hideFeedback("metadata_filepath")
-      shinyFeedback::feedbackDanger(
-        inputId = "metadata_filepath",
-        show = TRUE,
-        text = "Data file and metadata file have the same name, 
-            please choose a different file."
-      )
-      shinyFeedback::hideFeedback("data_filepath")
-      shinyFeedback::feedbackDanger(
-        inputId = "data_filepath",
-        show = TRUE,
-        text = "Data file and metadata file have the same name, 
-            please choose a different file."
-      )
-    }
-    
     req(input$metadata_filepath$name != input$data_filepath$name)
     
     ## check files exist ----
@@ -301,7 +287,7 @@ server <- function(input, output, session) {
       shinyalert::shinyalert("Couldn't import dataset for some reason.", type = "error")
     }
     if(!isTruthy(meta_file)){
-      shinyalert::shinyalert("Couldn't import dataset for some reason.", type = "error")
+      shinyalert::shinyalert("Couldn't import metadata file for some reason.", type = "error")
     }
     
     req(dataset)
@@ -314,11 +300,9 @@ server <- function(input, output, session) {
     ## initial dataset processing ----
     # remove duplicates in feature names
     if(anyDuplicated(dataset[[feature_column]]) > 0){
-      shinyalert::shinyalert(
-        "Duplicate feature names found. These will be removed. 
-        To avoid this, reformat the data outside this tool and upload again.", 
-        type = "info"
-      )
+      msg <- "Duplicate feature names found. These will be removed. 
+        To avoid this, reformat the data outside this tool and upload again.<br><br>"
+      rv$info_log <- paste0(rv$info_log, msg)
       dataset <- dataset %>% 
         dplyr::distinct(.data[[feature_column]], .keep_all = TRUE)
     }
@@ -326,16 +310,12 @@ server <- function(input, output, session) {
     # check for NAs in feature names
     if(any(is.na(dataset[[feature_column]]))){
       n_na <- sum(is.na(dataset[[feature_column]]))
-      shinyalert::shinyalert(
-        paste0(
-          n_na, 
-          " NA value(s) found in feature names, these will be removed. 
-          To avoid this, reformat the data outside this tool and upload again."
-        ),
-        type = "info",
-        closeOnClickOutside = TRUE,
-        className = "shinyalertmodal"
+      msg <- paste0(
+        n_na, 
+        " NA value(s) found in feature names, these will be removed. 
+          To avoid this, reformat the data outside this tool and upload again.<br><br>"
       )
+      rv$info_log <- paste0(rv$info_log, msg)
       dataset <- tidyr::drop_na(dataset, .data[[feature_column]])
     }
     
@@ -365,60 +345,93 @@ server <- function(input, output, session) {
     # # remove any columns that aren't in the data file
     if(any(! meta_file[[1]] %in% colnames(dataset))){
       n_not_in <- sum(!meta_file[[1]] %in% colnames(dataset))
-      shinyalert::shinyalert(
-        paste0(
-          "Found ", 
-          n_not_in, 
-          " sample names in metadata that were not in dataset and will be removed. Sample name(s) being removed: ",
-          paste0(meta_file[[1]][!meta_file[[1]] %in% colnames(dataset)], collapse = ", ")
-        )
+      msg <- paste0(
+        "Found ", 
+        n_not_in, 
+        " sample names in metadata that were not in dataset and will be removed. <br> Sample name(s) being removed: ",
+        paste0(meta_file[[1]][!meta_file[[1]] %in% colnames(dataset)], collapse = ", "),
+        "<br>"
       )
+      rv$info_log <- paste0(rv$info_log, msg)
       meta_file <- meta_file[meta_file[[1]] %in% colnames(dataset), ]
     }
     
     #  remove any sample name columns that aren't in the metadata file
     if(any(! colnames(dataset) %in% meta_file[[1]])) {
       n_not_in <- sum(!colnames(dataset) %in% meta_file[[1]])
-      
-      shinyalert::shinyalert(
-        paste0(
-          "Found ", 
-          n_not_in, 
-          " sample names in dataset that were not in metadata and will be removed. Columns being kept are: ", 
-          paste0(colnames(dataset)[colnames(dataset) %in% meta_file[[1]]], collapse = ", "),
-          " Columns being removed are: ", 
-          paste0(colnames(dataset)[!colnames(dataset) %in% meta_file[[1]]], collapse = ", ")
-        ),
-        type = "info",
-        closeOnClickOutside = TRUE,
-        className = "shinyalertmodal"
+      msg <- paste0(
+        "Found ", 
+        n_not_in, 
+        " sample names in dataset that were not in metadata and will be removed. <br> Columns being kept are: ", 
+        paste0(colnames(dataset)[colnames(dataset) %in% meta_file[[1]]], collapse = ", "),
+        "<br>Columns being removed are: ", 
+        paste0(colnames(dataset)[!colnames(dataset) %in% meta_file[[1]]], collapse = ", ")
       )
+      rv$info_log <- paste0(rv$info_log, msg)
       dataset <- dplyr::select(dataset, all_of(meta_file[[1]]))
+    }
+    
+    general_info <- paste0(
+      "x feature names <br>",
+      "x no of meta categories <br>",
+      "etc"
+    )
+    rv$info_log <- paste(rv$info_log, general_info)
+
+    rv$info_log <- paste(rv$info_log, '</p>')
+    
+    # option to continue if there is any info in the summary log
+    # this makes it fail, not sure why
+    if (sum(nchar(rv$info_log)) > 0){
+      shinyalert::shinyalert(
+        rv$info_log,
+        inputId = "info_log_confirmation",
+        showCancelButton = TRUE,
+        type = "info",
+        closeOnClickOutside = FALSE,
+        className = "shinyalertmodal",
+        html = TRUE
+      )
+      #req(input$info_log_confirmation)
     }
     
     rv$data_file <- dataset
     rv$metadata_file <- meta_file
-    
-    # save metadata and dataset as .rds files -----
-    req(processed_dataset())
-    
-    req(processed_metadata())
-    
-    new_folder_path <- paste0("inst/extdata/", rv$ds_name)
-    dir.create(new_folder_path)
-    
-    outfile_meta <- paste0(new_folder_path, "/metadata.rds")
-    saveRDS(processed_metadata(), outfile_meta)
-    outfile_data <- paste0(new_folder_path, "/dataset.rds")  
-    saveRDS(processed_dataset(), outfile_data)
-    
-    # write out json file ----
-    x <- jsonlite::fromJSON(txt = "inst/extdata/updated_arrays.txt")
-    new_ds <- c(rv$ds_name, rv$ds_citation, rv$ds_summary_info, rv$ds_data_type)
-    x$data <- rbind(x$data, new_ds)
-    jsonlite::write_json(x, path = "inst/extdata/updated_arrays.txt")
-    
+  })
   
+  
+  observeEvent(input$info_log_confirmation, {
+    
+    if(input$info_log_confirmation){
+      
+      print("confirmed, please go ahead")
+      # save metadata and dataset as .rds files -----
+      req(processed_dataset())
+      req(processed_metadata())
+      
+      new_folder_path <- paste0("inst/extdata/", rv$ds_name)
+      dir.create(new_folder_path)
+      
+      outfile_meta <- paste0(new_folder_path, "/metadata.rds")
+      saveRDS(processed_metadata(), outfile_meta)
+      outfile_data <- paste0(new_folder_path, "/dataset.rds")  
+      saveRDS(processed_dataset(), outfile_data)
+      
+      # write out json file ----
+      x <- jsonlite::fromJSON(txt = "inst/extdata/updated_arrays.txt")
+      new_ds <- c(rv$ds_name, rv$ds_citation, rv$ds_summary_info, rv$ds_data_type)
+      x$data <- rbind(x$data, new_ds)
+      jsonlite::write_json(x, path = "inst/extdata/updated_arrays.txt")
+      
+      shinyalert::shinyalert(
+        "Dataset successfully uploaded, you should now be able to view this in spex",
+        type = "success"
+      )
+      
+    } else {
+      print("cancelled")
+    }
+    
   })
   
   ## dataset processing ----
@@ -462,9 +475,32 @@ server <- function(input, output, session) {
     ) 
   })
 
-  observeEvent(input$metadata_filepath$datapath, {
+ # observeEvent(input$metadata_filepath$datapath, {
+ # need observe here as we need to update if data_filepath changes
+  observe({
     if(isTruthy(input$metadata_filepath)){
       shinyFeedback::hideFeedback("metadata_filepath")
+      
+      # check meta and data files have different names ---
+      if(isTruthy(input$data_filepath)) { 
+        if(input$metadata_filepath$name == input$data_filepath$name){
+          shinyFeedback::hideFeedback("metadata_filepath")
+          shinyFeedback::feedbackDanger(
+            inputId = "metadata_filepath",
+            show = TRUE,
+            text = "Data file and metadata file have the same name, 
+              please choose a different file."
+          )
+          shinyFeedback::hideFeedback("data_filepath")
+          shinyFeedback::feedbackDanger(
+            inputId = "data_filepath",
+            show = TRUE,
+            text = "Data file and metadata file have the same name, 
+              please choose a different file."
+          )
+        }
+        req(input$metadata_filepath$name != input$data_filepath$name)
+      }
       
       if(tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv")){
         shinyFeedback::feedbackSuccess(
@@ -485,10 +521,34 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(input$data_filepath$datapath, {
+ # observeEvent(input$data_filepath$datapath, {
+ # # need observe here as we need to update if metadata_filepath changes
+ observe({
     if(isTruthy(input$data_filepath)){
+      #browser()
       shinyFeedback::hideFeedback("data_filepath")
       
+      # check meta and data files have different names ---
+      if(isTruthy(input$metadata_filepath)){
+        if (input$metadata_filepath$name == input$data_filepath$name){
+          shinyFeedback::hideFeedback("metadata_filepath")
+          shinyFeedback::feedbackDanger(
+            inputId = "metadata_filepath",
+            show = TRUE,
+            text = "Data file and metadata file have the same name, 
+            please choose a different file."
+          )
+          shinyFeedback::hideFeedback("data_filepath")
+          shinyFeedback::feedbackDanger(
+            inputId = "data_filepath",
+            show = TRUE,
+            text = "Data file and metadata file have the same name, 
+            please choose a different file."
+          )
+        } 
+        req(input$metadata_filepath$name != input$data_filepath$name)
+      }  
+         
       if(tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv")){
         shinyFeedback::feedbackSuccess(
           inputId = "data_filepath",
@@ -504,7 +564,7 @@ server <- function(input, output, session) {
             tools::file_ext(input$data_filepath$datapath)
           )
         )
-      }
+      }  
     }
   })
   
