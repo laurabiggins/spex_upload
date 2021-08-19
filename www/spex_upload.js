@@ -34,6 +34,11 @@ $('#datatype_info').click(function () {
 });
 
 
+$('#log_transform_info').click(function () {
+  modal = $('#logtransformmodal')[0];
+  modal.style.display = "block";
+});
+
 $(".close").click(function() {
   modal.style.display = "none";
 })
