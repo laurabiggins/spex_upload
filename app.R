@@ -14,6 +14,10 @@ library(magrittr)
 # 4. Add more detail to info pop-ups.
 # 
 # 5. Write overall documentation so it could be sent to bioinf people to test out.
+# 
+# 6. If folder already exists with that name - what do we do? Message saying rename the 
+# new folder. If you think the other one should be deleted, please email ....
+# I don't think we should allow existing ones to be overwritten.
 
 data_location <- "inst/extdata/"
 
@@ -129,6 +133,20 @@ ui <- tagList(
           img(id="summary_info", src="images/info1.png", class="info_logo")
         )
       ),
+      fluidRow(
+        column(
+          width = 8, 
+          checkboxInput(
+            inputId = "log_transform",
+            label = "Allow log transformation",
+            value = TRUE
+          ),
+        ),
+        column(
+          width = 2, 
+          img(id="log_transform_info", src="images/info1.png", class="info_logo")
+        )
+      ),
       actionButton(
         inputId = "go",
         label = "Go"
@@ -147,18 +165,42 @@ server <- function(input, output, session) {
   
   rv <- reactiveValues()
   
+  output$test_plot <- renderPlot(plot(1:10), width = 400, height = 400)
+  
   observeEvent(input$go, {
+    
+    # shinyalert::shinyalert(
+    #   html = TRUE,
+    #   text = tagList(
+    #     plotOutput("test_plot")#, inline = TRUE)
+    #     #textoutput("test_text", inline = TRUE)
+    #   )
+    # )
     
     # validation 1 - check input fields look ok ---
     ## dataset name ----
-    
+
     # need this here to take precedence over other css
-    rv$info_log <- '<p style="color:blue; font-size:16px; text-align: left;">'
+    #rv$info_log <- '<p style="color:blue; font-size:16px; text-align: left;">'
+    rv$info_log <- ""
     
     if(nchar(input$dataset_name) > 1) {
-      rv$ds_name <- input$dataset_name
+     
       shinyFeedback::hideFeedback("dataset_name")
+      
+      new_folder_path <- paste0("inst/extdata/", input$dataset_name)
+      if(dir.exists(new_folder_path)){
+        rv$ds_name <- NULL
+        shinyFeedback::feedbackDanger(
+          inputId = "dataset_name",
+          show = TRUE,
+          text = "A dataset of this name already exists and will not be overwritten. 
+          To continue with the upload of your dataset, enter a different name."
+        )
+      } else rv$ds_name <- input$dataset_name
+      
     } else {
+      rv$ds_name <- NULL
       shinyFeedback::feedbackWarning(
         inputId = "dataset_name",
         show = nchar(input$dataset_name) <= 1,
@@ -171,10 +213,11 @@ server <- function(input, output, session) {
       rv$ds_data_type <- input$data_type
       shinyFeedback::hideFeedback("data_type")
     } else {
-      shinyFeedback::feedbackWarning(
+      shinyFeedback::feedback(
         inputId = "data_type",
         show = !isTruthy(input$data_type),
-        text = "Please select a data type."
+        text = "No data type selected, this will be left blank.",
+        color = "yellow"
       )
     }
     
@@ -225,7 +268,8 @@ server <- function(input, output, session) {
     } 
     
     # stop if required fields aren't populated
-    req(nchar(input$dataset_name) > 1)
+    req(rv$ds_name)
+    #req(nchar(input$dataset_name) > 1)
     req(isTruthy(input$metadata_filepath))
     req(isTruthy(input$data_filepath))
     
@@ -301,7 +345,7 @@ server <- function(input, output, session) {
     # remove duplicates in feature names
     if(anyDuplicated(dataset[[feature_column]]) > 0){
       msg <- "Duplicate feature names found. These will be removed. 
-        To avoid this, reformat the data outside this tool and upload again.<br><br>"
+        To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>"
       rv$info_log <- paste0(rv$info_log, msg)
       dataset <- dataset %>% 
         dplyr::distinct(.data[[feature_column]], .keep_all = TRUE)
@@ -310,11 +354,15 @@ server <- function(input, output, session) {
     # check for NAs in feature names
     if(any(is.na(dataset[[feature_column]]))){
       n_na <- sum(is.na(dataset[[feature_column]]))
-      msg <- paste0(
-        n_na, 
-        " NA value(s) found in feature names, these will be removed. 
-          To avoid this, reformat the data outside this tool and upload again.<br><br>"
+      msg <- dplyr::if_else(
+        n_na == 1,
+        "1 NA value found in feature names, this will be removed. ",
+        paste0(
+          n_na, 
+          " NA values found in feature names, these will be removed. "
+        )
       )
+      msg <- paste0(msg, "To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>")
       rv$info_log <- paste0(rv$info_log, msg)
       dataset <- tidyr::drop_na(dataset, .data[[feature_column]])
     }
@@ -332,7 +380,7 @@ server <- function(input, output, session) {
         paste0(
           "Found ", 
           n_matched_samples,  
-          " sample names that matched between metadata and dataset. 
+          " sample name(s) that matched between metadata and dataset. 
           A minimum of 2 are required. Check the sample names in the files and try again."
         ),
         type = "error",
@@ -345,12 +393,17 @@ server <- function(input, output, session) {
     # # remove any columns that aren't in the data file
     if(any(! meta_file[[1]] %in% colnames(dataset))){
       n_not_in <- sum(!meta_file[[1]] %in% colnames(dataset))
+      inner_msg <- dplyr::if_else(
+        n_not_in == 1,
+        " sample name in metadata that was not in the dataset and will be removed. <br> Sample name being removed is: ",
+        " sample names in metadata that were not in the dataset and will be removed. <br> Sample names being removed are: ",
+      )
       msg <- paste0(
         "Found ", 
         n_not_in, 
-        " sample names in metadata that were not in dataset and will be removed. <br> Sample name(s) being removed: ",
+        inner_msg,
         paste0(meta_file[[1]][!meta_file[[1]] %in% colnames(dataset)], collapse = ", "),
-        "<br>"
+        "<br><br>"
       )
       rv$info_log <- paste0(rv$info_log, msg)
       meta_file <- meta_file[meta_file[[1]] %in% colnames(dataset), ]
@@ -359,47 +412,82 @@ server <- function(input, output, session) {
     #  remove any sample name columns that aren't in the metadata file
     if(any(! colnames(dataset) %in% meta_file[[1]])) {
       n_not_in <- sum(!colnames(dataset) %in% meta_file[[1]])
+      inner_msg <- dplyr::if_else(
+        n_not_in == 1,
+        " sample name in the dataset that was not in the metadata and will be removed. <br> Columns being kept are: ", 
+        " sample names in the dataset that were not in the metadata and will be removed. <br> Columns being kept are: ", 
+      )
       msg <- paste0(
         "Found ", 
         n_not_in, 
-        " sample names in dataset that were not in metadata and will be removed. <br> Columns being kept are: ", 
+        inner_msg, 
         paste0(colnames(dataset)[colnames(dataset) %in% meta_file[[1]]], collapse = ", "),
         "<br>Columns being removed are: ", 
-        paste0(colnames(dataset)[!colnames(dataset) %in% meta_file[[1]]], collapse = ", ")
+        paste0(colnames(dataset)[!colnames(dataset) %in% meta_file[[1]]], collapse = ", "),
+        "<br><br>"
       )
       rv$info_log <- paste0(rv$info_log, msg)
       dataset <- dplyr::select(dataset, all_of(meta_file[[1]]))
     }
     
+    # assemble info msg ----
+    
+    if(sum(nchar(rv$info_log) == 0)){
+      rv$info_log <- paste0(
+        '<p style="color:blue; font-size:30px; text-align: left;">',
+        "No potential issues detected",
+        '</p>'
+      )
+    } else {
+      rv$info_log <- paste0(
+        '<p style="color:blue; font-size:30px; text-align: left;">',
+        "Potential issues detected: </p>",
+        '<p style="color:blue; font-size:16px; text-align: left;">',
+        rv$info_log
+      )
+    }
+    
+    
     general_info <- paste0(
-      "x feature names <br>",
-      "x no of meta categories <br>",
-      "etc"
+      '<p style="color:blue; font-size:30px; text-align: left;">',
+      "Summary dataset information: </p>",
+      '<p style="color:blue; font-size:16px; text-align: left;">',
+      "dataset has ",
+      nrow(dataset),
+      " rows (observations/features) and ",
+      ncol(dataset), 
+      " columns (samples). <br> Metadata information supplied includes ",
+      ncol(meta_file),
+      " columns: ",
+      paste0(colnames(meta_file), collapse = ", "),
+      "</p>"
     )
     rv$info_log <- paste(rv$info_log, general_info)
 
-    rv$info_log <- paste(rv$info_log, '</p>')
+    #rv$info_log <- paste(rv$info_log, '</p>')
     
-    # option to continue if there is any info in the summary log
-    # this makes it fail, not sure why
+    # option to continue if there is any info in the summary log - there should always be info in it.
+    
     if (sum(nchar(rv$info_log)) > 0){
       shinyalert::shinyalert(
         rv$info_log,
         inputId = "info_log_confirmation",
         showCancelButton = TRUE,
-        type = "info",
+       # type = "info",
         closeOnClickOutside = FALSE,
         className = "shinyalertmodal",
-        html = TRUE
+        imageWidth = 20,
+        html = TRUE,
+        size = "l"
       )
-      #req(input$info_log_confirmation)
     }
     
     rv$data_file <- dataset
     rv$metadata_file <- meta_file
   })
   
-  
+  # This occurs when the user is happy that the information in the modal looks ok.
+  # This is just checking that the new file path is ok - should probably happen before.
   observeEvent(input$info_log_confirmation, {
     
     if(input$info_log_confirmation){
@@ -410,6 +498,7 @@ server <- function(input, output, session) {
       req(processed_metadata())
       
       new_folder_path <- paste0("inst/extdata/", rv$ds_name)
+      
       dir.create(new_folder_path)
       
       outfile_meta <- paste0(new_folder_path, "/metadata.rds")
@@ -434,18 +523,33 @@ server <- function(input, output, session) {
     
   })
   
+  
+  sample_vector <- reactive({
+    # check if the data should be log transformed
+    data_vector <- unlist(rv$data_file)
+    
+    sample_size <- dplyr::if_else(
+      length(data_vector) <= 5000, 
+      length(data_vector), 
+      as.integer(5000)
+    )
+    sample(data_vector, size = sample_size)
+  })
+    
+  output$qqnorm_plots <- renderPlot(qqnorm(sample_vector()), width = 400, height = 400)
+  
   ## dataset processing ----
   processed_dataset <- reactive({
  
     dataset <- rv$data_file
-    
-    # check if the data should be log transformed
-    data_vector <- unlist(dataset)
-    
-    sample_size <- dplyr::if_else(length(data_vector) <= 5000, length(data_vector), as.integer(5000))
-    
-    sample_vector <- sample(data_vector, size = sample_size)
-    shapiro_result <- shapiro.test(sample_vector)
+    # 
+    # # check if the data should be log transformed
+    # data_vector <- unlist(dataset)
+    # 
+    # sample_size <- dplyr::if_else(length(data_vector) <= 5000, length(data_vector), as.integer(5000))
+    # 
+    # sample_vector <- sample(data_vector, size = sample_size)
+    shapiro_result <- shapiro.test(sample_vector())
     
     if(shapiro_result$p.value < 0.01) {
       #print("Data looks like it should be log transformed.")
@@ -454,6 +558,17 @@ server <- function(input, output, session) {
       #qqnorm(log2(sample_vector))
       
       #browser()
+      # this doesn't work properly - maybe it needs to not be in the reactive??
+      shinyalert::shinyalert(
+        html = TRUE,
+        text = tagList(
+          plotOutput("test_plot")
+          #"Data was log2 transformed.",
+          #plotOutput("qqnorm_plots")#, inline = TRUE)
+        )
+      )
+      
+      #output$qqnorm_plots <- renderPlot(qqnorm(sample_vector))
       
       dataset <- log2(dataset)
  
