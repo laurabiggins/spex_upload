@@ -452,7 +452,7 @@ server <- function(input, output, session) {
       '<p style="color:blue; font-size:30px; text-align: left;">',
       "Summary dataset information: </p>",
       '<p style="color:blue; font-size:16px; text-align: left;">',
-      "dataset has ",
+      "Dataset has ",
       nrow(dataset),
       " rows (observations/features) and ",
       ncol(dataset), 
@@ -460,7 +460,7 @@ server <- function(input, output, session) {
       ncol(meta_file),
       " columns: ",
       paste0(colnames(meta_file), collapse = ", "),
-      "</p>"
+      ".</p>"
     )
     rv$info_log <- paste(rv$info_log, general_info)
 
