@@ -49,7 +49,10 @@ ui <- tagList(
     h1(id="main_title", "Upload new dataset"),
     p("Upload a dataset from your computer to spex. Details about each field and the required file formats can be found by clicking on the accompanying info icons"),
     br(),
-    
+    actionButton(
+      inputId = "test",
+      label = "test"
+    ),
     wellPanel(
       fluidRow(
         column(
@@ -167,22 +170,47 @@ server <- function(input, output, session) {
   
   output$test_plot <- renderPlot(plot(1:10), width = 400, height = 400)
   
-  observeEvent(input$go, {
+  observeEvent(input$test, {
     
-    # shinyalert::shinyalert(
-    #   html = TRUE,
-    #   text = tagList(
-    #     plotOutput("test_plot")#, inline = TRUE)
-    #     #textoutput("test_text", inline = TRUE)
-    #   )
-    # )
+    
+    
+    temp_text <- "<div class='potentialIssues'><p style=\"font-size:30px; \">Potential issues detected: </p><p font-size:16px;\">Duplicate feature names found. These will be removed. \n To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>1 NA value found in feature names, this will be removed. To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>Found 1 sample name in metadata that was not in the dataset and will be removed. <br> Sample name being removed is: EXTRA<br><br>Found 5 sample names in the dataset that were not in the metadata and will be removed. <br> Columns being kept are: NAIVE_A1, NAIVE_A2, NAIVE_E1, NAIVE_E2, PRIMED_A1, PRIMED_A2, PRIMED_E1, PRIMED_E2<br>Columns being removed are: Protein names, Gene names, Pep Count, log2_fc naive primed, Biological process<br><br> 
+    </div>
+    <br>
+    <div class='summaryText'>
+    <p style=\"font-size:30px;\">Summary dataset information: </p><p style=\"font-size:16px;\">Dataset has 14 rows (observations/features) and 8 columns (samples). <br> Metadata information supplied includes 3 columns: sample_name, condition, cell line.</p>"
+    
+    temp_table <- tableHTML::tableHTML(
+      head(cars),
+      rownames = FALSE,
+      border = 2,
+      class = "modal_conf1"
+    )
+    
+    temp_output <- paste0(temp_text, "<br>", temp_table, "</div>")
+    
+    shinyalert::shinyalert(
+     # html = TRUE,
+      # text = tagList(
+      #   temp_text#,
+      #   plotOutput("test_plot", inline = TRUE),
+      # ),
+      #text = c(temp_text, temp_table),
+      text = temp_output,
+      html = TRUE,
+      size = "l",
+      className = "shinyalertmodal",
+      imageWidth = 20
+    )
+  })
+  
+  
+    observeEvent(input$go, {
     
     # validation 1 - check input fields look ok ---
     ## dataset name ----
 
-    # need this here to take precedence over other css
-    #rv$info_log <- '<p style="color:blue; font-size:16px; text-align: left;">'
-    rv$info_log <- ""
+    rv$issues_log <- ""
     
     if(nchar(input$dataset_name) > 1) {
      
@@ -346,7 +374,7 @@ server <- function(input, output, session) {
     if(anyDuplicated(dataset[[feature_column]]) > 0){
       msg <- "Duplicate feature names found. These will be removed. 
         To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>"
-      rv$info_log <- paste0(rv$info_log, msg)
+      rv$issues_log <- paste0(rv$issues_log, msg)
       dataset <- dataset %>% 
         dplyr::distinct(.data[[feature_column]], .keep_all = TRUE)
     }
@@ -363,7 +391,7 @@ server <- function(input, output, session) {
         )
       )
       msg <- paste0(msg, "To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>")
-      rv$info_log <- paste0(rv$info_log, msg)
+      rv$issues_log <- paste0(rv$issues_log, msg)
       dataset <- tidyr::drop_na(dataset, .data[[feature_column]])
     }
     
@@ -405,7 +433,7 @@ server <- function(input, output, session) {
         paste0(meta_file[[1]][!meta_file[[1]] %in% colnames(dataset)], collapse = ", "),
         "<br><br>"
       )
-      rv$info_log <- paste0(rv$info_log, msg)
+      rv$issues_log <- paste0(rv$issues_log, msg)
       meta_file <- meta_file[meta_file[[1]] %in% colnames(dataset), ]
     }
     
@@ -426,33 +454,24 @@ server <- function(input, output, session) {
         paste0(colnames(dataset)[!colnames(dataset) %in% meta_file[[1]]], collapse = ", "),
         "<br><br>"
       )
-      rv$info_log <- paste0(rv$info_log, msg)
+      rv$issues_log <- paste0(rv$issues_log, msg)
       dataset <- dplyr::select(dataset, all_of(meta_file[[1]]))
     }
     
     # assemble info msg ----
     
-    if(sum(nchar(rv$info_log) == 0)){
-      rv$info_log <- paste0(
-        '<p style="color:blue; font-size:30px; text-align: left;">',
-        "No potential issues detected",
-        '</p>'
-      )
+    if(sum(nchar(rv$issues_log) == 0)){
+      rv$issues_log <- '<div class="potentialIssues"><p style="font-size:30px;">No potential issues detected</p></div>'
     } else {
-      rv$info_log <- paste0(
-        '<p style="color:blue; font-size:30px; text-align: left;">',
-        "Potential issues detected: </p>",
-        '<p style="color:blue; font-size:16px; text-align: left;">',
-        rv$info_log
+      rv$issues_log <- paste0(
+        '<div class="potentialIssues"><p style="font-size:30px;">Potential issues detected: </p><p font-size:16px;">',
+        rv$issues_log,
+        '</div>'
       )
     }
     
-    
     general_info <- paste0(
-      '<p style="color:blue; font-size:30px; text-align: left;">',
-      "Summary dataset information: </p>",
-      '<p style="color:blue; font-size:16px; text-align: left;">',
-      "Dataset has ",
+      '<p style="font-size:30px;"> Summary dataset information: </p><p style="font-size:16px;"> Dataset has ',
       nrow(dataset),
       " rows (observations/features) and ",
       ncol(dataset), 
@@ -462,26 +481,44 @@ server <- function(input, output, session) {
       paste0(colnames(meta_file), collapse = ", "),
       ".</p>"
     )
-    rv$info_log <- paste(rv$info_log, general_info)
 
-    #rv$info_log <- paste(rv$info_log, '</p>')
+    table_dataset <- tableHTML::tableHTML(
+      head(dataset, n = 5),
+      rownames = TRUE,
+      border = 2,
+      class = "modal_conf1"
+    )
+    table_metadata <- tableHTML::tableHTML(
+      head(meta_file, n = 5),
+      rownames = FALSE,
+      border = 2,
+      class = "modal_conf1"
+    )
+    
+    modal_output <- paste0(
+      rv$issues_log, 
+      '<br><div class="summaryText">', 
+      general_info, 
+      '<br>',
+      table_dataset, 
+      "<br>", 
+      table_metadata,
+      '</div>'
+    )
     
     # option to continue if there is any info in the summary log - there should always be info in it.
     
-    if (sum(nchar(rv$info_log)) > 0){
+    ## modal confirmation 1 ----
       shinyalert::shinyalert(
-        rv$info_log,
+        modal_output,
         inputId = "info_log_confirmation",
         showCancelButton = TRUE,
-       # type = "info",
         closeOnClickOutside = FALSE,
         className = "shinyalertmodal",
-        imageWidth = 20,
         html = TRUE,
-        size = "l"
+        size = "l",
+       
       )
-    }
-    
     rv$data_file <- dataset
     rv$metadata_file <- meta_file
   })
