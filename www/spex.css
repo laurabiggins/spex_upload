@@ -20,6 +20,44 @@ body {
     height: 20px;
 }
 
+.modal_conf1 {
+  background-color: #edeff0;
+  color: black;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+/*.modal_conf1 > thead {
+  background-color: blue;
+  font-weight: bold;
+  font-size: 12px;
+}
+*/
+.modal_conf1 > thead > tr > th {
+  font-weight: bold;
+  color: orange;
+  padding: 10px;
+}
+
+#tableHTML_rownames {
+  color: red;
+  padding: 0px 10px;
+}
+
+.potentialIssues {
+  background-color: #FDE187;
+  text-align: left;
+  color: black;
+  padding: 20px;
+}
+
+.summaryText {
+  background-color: #D4ECDC;
+  text-align: left;
+  color: black;
+  padding: 20px;
+}
+
 .shinyalertmodal {
   font-size: 20px;
 }
