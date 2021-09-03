@@ -1,6 +1,12 @@
 
-var modal;
 
+$('#spex_logo').click(function () {
+  //window.location.replace("http://www.google.com");
+  //window.location.href = "http://www.google.com";
+  window.location.href = "D:/projects/spex_home/git/spex_home/spex_home.html";
+});
+
+var modal;
 
 // display modals if info button is clicked
 $('#dataset_name_info').click(function () {

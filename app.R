@@ -23,6 +23,17 @@ data_location <- "inst/extdata/"
 
 bab_light_blue <- "#00aeef"
 bab_dark_blue <- "#1d305f"
+orange_custom <- "#ff6600e6"
+danger_colour <- "yellow"
+warning_colour <- "#9fd463"
+
+main_app_url <- "http://127.0.0.1:7369/"
+
+spex_generic_link <- paste0(
+  '<a href="',
+  main_app_url,
+  '" target="_blank" class="button" id="portal">Go to application</a>'
+)
 
 # libraries
 # shinyFeedback, shinyjs, shinyalert
@@ -34,20 +45,24 @@ ui <- tagList(
     shinyFeedback::useShinyFeedback(),
     shinyjs::useShinyjs(),
     shinyalert::useShinyalert(),
-    #tags$head(
+    tags$head(
       tags$link(rel = "stylesheet", type = "text/css", href = "spex.css"),
-    #),
+      HTML('<link rel="icon" type="image/jpg" href = "images/spex_logo_rotated.png"/>')
+    ),
     theme = bslib::bs_theme(
       bg = bab_dark_blue,
       fg = "white",
-      primary = bab_light_blue,
-      secondary = bab_light_blue
+      #primary = bab_light_blue,
+      secondary = orange_custom,
+      primary = orange_custom
     ),
     
     img(id="BI_logo1", src="images/BI_logo_grey.png", alt="BI logo"),
     
-    h1(id="main_title", "Upload new dataset"),
-    p("Upload a dataset from your computer to spex. Details about each field and the required file formats can be found by clicking on the accompanying info icons"),
+    img(id="spex_logo", src="images/spex_logo_grey_rotated.png", alt="spex logo"),
+    #id="main_title",
+    titlePanel( windowTitle = "Spex upload", title ="Upload new dataset"),
+    p(id="upload_general_info", "Upload a dataset from your computer to spex. Details about each field and the required file formats can be found by clicking on the accompanying info icons."),
     br(),
     actionButton(
       inputId = "test",
@@ -56,47 +71,18 @@ ui <- tagList(
     wellPanel(
       fluidRow(
         column(
-          width = 8, 
+          width = 5, 
           textInput(
             inputId = "dataset_name",
             label = c("Enter dataset name")
           ),
         ),
         column(
-          width = 2, 
+          width = 1, 
           img(id="dataset_name_info", src="images/info1.png", class="info_logo")
-        )
-      ),
-      br(),
-      fluidRow(
-        column(
-          width = 8,
-          fileInput(
-            inputId = "data_filepath",
-            label = "Choose data file"
-          )
         ),
         column(
-          width = 2, 
-          img(id="data_filepath_info", src="images/info1.png", class="info_logo")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 8,
-          fileInput(
-            inputId = "metadata_filepath",
-            label = "Choose meta data file"
-          )
-        ),
-        column(
-          width = 2, 
-          img(id="metadata_filepath_info", src="images/info1.png", class="info_logo")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 8, 
+          width = 5, 
           selectInput(
             inputId = "data_type",
             label = c("Select data type"), 
@@ -105,40 +91,38 @@ ui <- tagList(
           ),
         ),
         column(
-          width = 2, 
+          width = 1, 
           img(id="datatype_info", src="images/info1.png", class="info_logo")
         )
       ),
+      br(),
       fluidRow(
         column(
-          width = 8, 
-          textInput(
-            inputId = "citation",
-            label = "Enter citation"
-          ),
+          width = 5,
+          fileInput(
+            inputId = "data_filepath",
+            label = "Choose data file"
+          )
         ),
         column(
-          width = 2, 
-          img(id="citation_info", src="images/info1.png", class="info_logo")
+          width = 1, 
+          img(id="data_filepath_info", src="images/info1.png", class="info_logo")
+        ),
+        column(
+          width = 5,
+          fileInput(
+            inputId = "metadata_filepath",
+            label = "Choose meta data file"
+          )
+        ),
+        column(
+          width = 1, 
+          img(id="metadata_filepath_info", src="images/info1.png", class="info_logo")
         )
       ),
       fluidRow(
         column(
-          width = 8, 
-          textAreaInput(
-            inputId = "summary",
-            label = "Enter summary information",
-            height = "150px"
-          ),
-        ),
-        column(
-          width = 2, 
-          img(id="summary_info", src="images/info1.png", class="info_logo")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 8, 
+          width = 3, 
           checkboxInput(
             inputId = "log_transform",
             label = "Allow log transformation",
@@ -146,15 +130,56 @@ ui <- tagList(
           ),
         ),
         column(
-          width = 2, 
+          width = 1, 
           img(id="log_transform_info", src="images/info1.png", class="info_logo")
         )
       ),
+      br(),
+      fluidRow(
+        column(
+          width = 11, 
+          textInput(
+            inputId = "citation",
+            label = "Enter citation"
+          ),
+        ),
+        column(
+          width = 1, 
+          img(id="citation_info", src="images/info1.png", class="info_logo")
+        )
+      ),
+      fluidRow(
+        column(
+          width = 11, 
+          textAreaInput(
+            inputId = "summary",
+            label = "Enter summary information",
+            height = "150px"
+          ),
+        ),
+        column(
+          width = 1, 
+          img(id="summary_info", src="images/info1.png", class="info_logo")
+        )
+     ),
+      # fluidRow(
+      #   column(
+      #     width = 5,
+      #     fileInput(
+      #       inputId = "sets_of_interest",
+      #       label = "Choose file"
+      #     )
+      #   ),
+      #   column(
+      #     width = 1, 
+      #     img(id="data_filepath_info", src="images/info1.png", class="info_logo")
+      #   ),
       actionButton(
         inputId = "go",
         label = "Go"
       ),
-      actionButton("browser", "browser")
+      actionButton("browser", "browser"),
+      HTML(spex_generic_link)
     ),
     includeHTML("www/modals.html"),
 
@@ -187,15 +212,37 @@ server <- function(input, output, session) {
       class = "modal_conf1"
     )
     
-    temp_output <- paste0(temp_text, "<br>", temp_table, "</div>")
+   #spex_link <- '<a href="http://127.0.0.1:7369/" target="_blank" class="button" id="portal">Go to application</a>'
+
+    # spex_dataset_link <- paste0(
+    #   '<a href="',
+    #   main_app_url,
+    #   '" target="_blank" class="button" id="portal">Go to application</a>'
+    # )
+    # 
+    # success_text <- paste0(
+    #   '<div class="success"><p>"Dataset successfully uploaded, you should now be able to view this in spex"</p>',
+    #   spex_dataset_link,
+    #   '</div>'
+    # )
+    
+    success_text <- "<div class=\"success\"><p>Dataset successfully uploaded, you should now be able to view this in spex</p><a href=\"http://127.0.0.1:7369//#sryjsry\" target=\"_blank\" class=\"button\" id=\"portal\">Go to application</a></div>"
+    
+    
+    # shinyalert::shinyalert(
+    #   text = success_text,
+    #   html = TRUE
+    # )
+    
+    #temp_output <- paste0(temp_text, temp_text,temp_text,temp_text,"<br>", temp_table, "</div>")
+    
+    
+    temp_output <- paste0(
+      "<div style = 'overflow: auto; max-height: 80vh;'>,",
+      temp_text,"<br>", success_text, temp_table, "</div></div>")
     
     shinyalert::shinyalert(
-     # html = TRUE,
-      # text = tagList(
-      #   temp_text#,
-      #   plotOutput("test_plot", inline = TRUE),
-      # ),
-      #text = c(temp_text, temp_table),
+      #text = temp_output,
       text = temp_output,
       html = TRUE,
       size = "l",
@@ -223,16 +270,18 @@ server <- function(input, output, session) {
           inputId = "dataset_name",
           show = TRUE,
           text = "A dataset of this name already exists and will not be overwritten. 
-          To continue with the upload of your dataset, enter a different name."
+          To continue with the upload of your dataset, enter a different name.",
+          color = danger_colour
         )
       } else rv$ds_name <- input$dataset_name
       
     } else {
       rv$ds_name <- NULL
-      shinyFeedback::feedbackWarning(
+      shinyFeedback::feedbackDanger(
         inputId = "dataset_name",
         show = nchar(input$dataset_name) <= 1,
-        text = "Please enter a name for the dataset."
+        text = "Please enter a name for the dataset.",
+        color = danger_colour
       )
     }
 
@@ -245,7 +294,7 @@ server <- function(input, output, session) {
         inputId = "data_type",
         show = !isTruthy(input$data_type),
         text = "No data type selected, this will be left blank.",
-        color = "yellow"
+        color = warning_colour
       )
     }
     
@@ -258,7 +307,7 @@ server <- function(input, output, session) {
         inputId = "citation",
         show = !isTruthy(input$citation),
         text = "No citation supplied, this will be left blank.",
-        color = "yellow"
+        color = warning_colour
       )
       rv$ds_citation <- ""
     }
@@ -272,26 +321,28 @@ server <- function(input, output, session) {
         inputId = "summary",
         show = !isTruthy(input$summary),
         text = "No summary information supplied, this will be left blank.",
-        color = "yellow"
+        color = warning_colour
       )
       rv$ds_summary <- ""
     }
     
     ## metadata  ----
     if(!isTruthy(input$metadata_filepath)){
-      shinyFeedback::feedbackWarning(
+      shinyFeedback::feedbackDanger(
         inputId = "metadata_filepath",
         show = !isTruthy(input$metadata_filepath),
-        text = "Please select a metadata file."
+        text = "Please select a metadata file.",
+        color = danger_colour
       )
     } 
     
     ## dataset ----
     if(!isTruthy(input$data_filepath)){
-      shinyFeedback::feedbackWarning(
+      shinyFeedback::feedbackDanger(
         inputId = "data_filepath",
         show = !isTruthy(input$data_filepath),
-        text = "Please select a data file."
+        text = "Please select a data file.",
+        color = danger_colour
       )
     } 
     
@@ -306,19 +357,21 @@ server <- function(input, output, session) {
     ## check files exist ----
     if(!file.exists(input$metadata_filepath$datapath)){
       shinyFeedback::hideFeedback("metadata_filepath")
-      shinyFeedback::feedbackWarning(
+      shinyFeedback::feedbackDanger(
         inputId = "metadata_filepath",
         show = !file.exists(input$metadata_filepath$datapath),
-        text = paste0("Couldn't locate file: ", input$metadata_filepath$datapath)
+        text = paste0("Couldn't locate file: ", input$metadata_filepath$datapath),
+        color = danger_colour
       )
     }
     
     if(!file.exists(input$data_filepath$datapath)){
       shinyFeedback::hideFeedback("data_filepath")
-      shinyFeedback::feedbackWarning(
+      shinyFeedback::feedbackDanger(
         inputId = "data_filepath",
         show = !file.exists(input$data_filepath$datapath),
-        text = paste0("Couldn't locate file: ", input$data_filepath$datapath)
+        text = paste0("Couldn't locate file: ", input$data_filepath$datapath),
+        color = danger_colour
       )
     }  
     
@@ -496,6 +549,7 @@ server <- function(input, output, session) {
     )
     
     modal_output <- paste0(
+      "<div style = 'overflow: auto; max-height: 80vh;'>", # to allow scrolling https://github.com/daattali/shinyalert/issues/44 
       rv$issues_log, 
       '<br><div class="summaryText">', 
       general_info, 
@@ -503,7 +557,7 @@ server <- function(input, output, session) {
       table_dataset, 
       "<br>", 
       table_metadata,
-      '</div>'
+      '</div></div>'
     )
     
     # option to continue if there is any info in the summary log - there should always be info in it.
@@ -549,9 +603,26 @@ server <- function(input, output, session) {
       x$data <- rbind(x$data, new_ds)
       jsonlite::write_json(x, path = "inst/extdata/updated_arrays.txt")
       
+      #browser()
+      spex_dataset_link <- paste0(
+        '<a href="',
+        main_app_url,
+        '/#',
+        rv$ds_name,
+        '" target="_blank" class="button" id="portal">View dataset in application</a>'
+      )
+      
+      success_text <- paste0(
+        '<div class="success"><p>Dataset successfully uploaded, you should now be able to view this in spex</p><br>',
+        spex_dataset_link,
+        '<br>',
+        spex_generic_link,
+        '</div>'
+      )
+      
       shinyalert::shinyalert(
-        "Dataset successfully uploaded, you should now be able to view this in spex",
-        type = "success"
+        success_text,
+        html = TRUE
       )
       
     } else {
@@ -579,31 +650,26 @@ server <- function(input, output, session) {
   processed_dataset <- reactive({
  
     dataset <- rv$data_file
-    # 
-    # # check if the data should be log transformed
-    # data_vector <- unlist(dataset)
-    # 
-    # sample_size <- dplyr::if_else(length(data_vector) <= 5000, length(data_vector), as.integer(5000))
-    # 
-    # sample_vector <- sample(data_vector, size = sample_size)
+
     shapiro_result <- shapiro.test(sample_vector())
     
     if(shapiro_result$p.value < 0.01) {
-      #print("Data looks like it should be log transformed.")
+      
+      print("Data looks like it should be log transformed.")
     
      # qqnorm(sample_vector)
       #qqnorm(log2(sample_vector))
       
       #browser()
       # this doesn't work properly - maybe it needs to not be in the reactive??
-      shinyalert::shinyalert(
-        html = TRUE,
-        text = tagList(
-          plotOutput("test_plot")
-          #"Data was log2 transformed.",
-          #plotOutput("qqnorm_plots")#, inline = TRUE)
-        )
-      )
+      # shinyalert::shinyalert(
+      #   html = TRUE,
+      #   text = tagList(
+      #     plotOutput("test_plot")
+      #     #"Data was log2 transformed.",
+      #     #plotOutput("qqnorm_plots")#, inline = TRUE)
+      #   )
+      # )
       
       #output$qqnorm_plots <- renderPlot(qqnorm(sample_vector))
       
@@ -641,14 +707,16 @@ server <- function(input, output, session) {
             inputId = "metadata_filepath",
             show = TRUE,
             text = "Data file and metadata file have the same name, 
-              please choose a different file."
+              please choose a different file.",
+            color = danger_colour
           )
           shinyFeedback::hideFeedback("data_filepath")
           shinyFeedback::feedbackDanger(
             inputId = "data_filepath",
             show = TRUE,
             text = "Data file and metadata file have the same name, 
-              please choose a different file."
+              please choose a different file.",
+            color = danger_colour
           )
         }
         req(input$metadata_filepath$name != input$data_filepath$name)
@@ -661,13 +729,14 @@ server <- function(input, output, session) {
           text = "Happy with the file type"
         )
       } else {
-        shinyFeedback::feedbackWarning(
+        shinyFeedback::feedbackDanger(
           inputId = "metadata_filepath",
           show = !tools::file_ext(input$metadata_filepath$datapath) %in% c("tsv", "txt", "csv"),
           text = paste0(
             "Metadata file type must be one of tsv, txt or csv, file type specified was ",
             tools::file_ext(input$metadata_filepath$datapath)
-          )
+          ),
+          color = danger_colour
         )
       }
     }
@@ -688,14 +757,16 @@ server <- function(input, output, session) {
             inputId = "metadata_filepath",
             show = TRUE,
             text = "Data file and metadata file have the same name, 
-            please choose a different file."
+            please choose a different file.",
+            color = danger_colour
           )
           shinyFeedback::hideFeedback("data_filepath")
           shinyFeedback::feedbackDanger(
             inputId = "data_filepath",
             show = TRUE,
             text = "Data file and metadata file have the same name, 
-            please choose a different file."
+            please choose a different file.",
+            color = danger_colour
           )
         } 
         req(input$metadata_filepath$name != input$data_filepath$name)
@@ -708,13 +779,14 @@ server <- function(input, output, session) {
           text = "Happy with the file type"
         )
       } else {
-        shinyFeedback::feedbackWarning(
+        shinyFeedback::feedbackDanger(
           inputId = "data_filepath",
           show = !tools::file_ext(input$data_filepath$datapath) %in% c("tsv", "txt", "csv"),
           text = paste0(
             "Data file type must be one of tsv, txt or csv, file type specified was ",
             tools::file_ext(input$data_filepath$datapath)
-          )
+          ),
+          color = danger_colour
         )
       }  
     }
