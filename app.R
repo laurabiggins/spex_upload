@@ -27,7 +27,7 @@ orange_custom <- "#ff6600e6"
 danger_colour <- "yellow"
 warning_colour <- "#9fd463"
 
-main_app_url <- "https://www.bioinformatics.babraham.ac.uk/shiny/spex/"
+main_app_url <- "https://www.bioinformatics.babraham.ac.uk/shiny/spex/spex/"
 
 spex_generic_link <- paste0(
   '<a href="',
