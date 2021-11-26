@@ -176,7 +176,8 @@ ui <- tagList(
       #   ),
       actionButton(
         inputId = "go",
-        label = "Go"
+        label = "Go",
+        class = "button"
       ),
       actionButton("browser", "browser"),
       HTML(spex_generic_link)
