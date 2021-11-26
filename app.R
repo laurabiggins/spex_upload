@@ -27,7 +27,7 @@ orange_custom <- "#ff6600e6"
 danger_colour <- "yellow"
 warning_colour <- "#9fd463"
 
-main_app_url <- "http://127.0.0.1:7369/"
+main_app_url <- "https://www.bioinformatics.babraham.ac.uk/shiny/spex/"
 
 spex_generic_link <- paste0(
   '<a href="',
@@ -61,7 +61,7 @@ ui <- tagList(
     
     img(id="spex_logo", src="images/spex_logo_grey_rotated.png", alt="spex logo"),
     #id="main_title",
-    titlePanel( windowTitle = "Spex upload", title ="Upload new dataset"),
+    titlePanel(windowTitle = "Spex upload", title ="Upload new dataset"),
     p(id="upload_general_info", "Upload a dataset from your computer to spex. Details about each field and the required file formats can be found by clicking on the accompanying info icons."),
     br(),
     actionButton(
