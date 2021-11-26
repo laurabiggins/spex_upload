@@ -1,32 +1,32 @@
 body {
-    font-family: arial, helvetica, sans-serif;
-    font-size: 16px;
-    color: white;
-    background-color: #1d305f;
-    margin: 20px;
-    padding: 0;
+  font-family: arial, helvetica, sans-serif;
+  font-size: 16px;
+  color: white;
+  background-color: #1d305f;
+  margin: 20px;
+  padding: 0;
 }
 
 #BI_logo1 {
-    float: right;
-    width:  80px;
-    height: 80px;
-	  margin: 0 0 0 20px;
+  float: right;
+  width:  80px;
+  height: 80px;
+  margin: 0 0 0 20px;
 }
 
 #spex_logo {
-    float: left;
-    width:  80px;
-    height: 80px;
-	  margin: 0 20px 20px 0;
-	  cursor: pointer;
+  float: left;
+  width:  80px;
+  height: 80px;
+  margin: 0 20px 20px 0;
+  cursor: pointer;
 }
 
 
 #dataset_name_info {
-    float: left;
-    width:  20px;
-    height: 20px;
+  float: left;
+  width:  20px;
+  height: 20px;
 }
 
 #upload_general_info {
@@ -80,10 +80,10 @@ body {
 }
 
 .info_logo {
-    float: left;
-    width:  20px;
-    height: 20px;
-    cursor: pointer;
+  float: left;
+  width:  20px;
+  height: 20px;
+  cursor: pointer;
 }
 
 /* The Modal (background) */
