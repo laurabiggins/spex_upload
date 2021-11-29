@@ -3,5 +3,3 @@
 .RData
 .Ruserdata
 data-raw/
-inst/extdata/updated_arrays.txt
-inst/extdata/*/*
