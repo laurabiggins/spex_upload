@@ -35,6 +35,12 @@ spex_generic_link <- paste0(
   '" target="_blank" class="button" id="portal">Go to application</a>'
 )
 
+# for testing locally
+#new_data_path <- "inst/extdata/"
+# for using on server
+new_data_path <- "../spex/spex/inst/extdata/"
+
+
 # libraries
 # shinyFeedback, shinyjs, shinyalert
 
@@ -162,18 +168,6 @@ ui <- tagList(
           img(id="summary_info", src="images/info1.png", class="info_logo")
         )
      ),
-      # fluidRow(
-      #   column(
-      #     width = 5,
-      #     fileInput(
-      #       inputId = "sets_of_interest",
-      #       label = "Choose file"
-      #     )
-      #   ),
-      #   column(
-      #     width = 1, 
-      #     img(id="data_filepath_info", src="images/info1.png", class="info_logo")
-      #   ),
       actionButton(
         inputId = "go",
         label = "Go",
@@ -198,8 +192,6 @@ server <- function(input, output, session) {
   
   observeEvent(input$test, {
     
-    
-    
     temp_text <- "<div class='potentialIssues'><p style=\"font-size:30px; \">Potential issues detected: </p><p font-size:16px;\">Duplicate feature names found. These will be removed. \n To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>1 NA value found in feature names, this will be removed. To avoid this, select cancel, then reformat the data outside this tool and re-upload.<br><br>Found 1 sample name in metadata that was not in the dataset and will be removed. <br> Sample name being removed is: EXTRA<br><br>Found 5 sample names in the dataset that were not in the metadata and will be removed. <br> Columns being kept are: NAIVE_A1, NAIVE_A2, NAIVE_E1, NAIVE_E2, PRIMED_A1, PRIMED_A2, PRIMED_E1, PRIMED_E2<br>Columns being removed are: Protein names, Gene names, Pep Count, log2_fc naive primed, Biological process<br><br> 
     </div>
     <br>
@@ -213,30 +205,8 @@ server <- function(input, output, session) {
       class = "modal_conf1"
     )
     
-   #spex_link <- '<a href="http://127.0.0.1:7369/" target="_blank" class="button" id="portal">Go to application</a>'
-
-    # spex_dataset_link <- paste0(
-    #   '<a href="',
-    #   main_app_url,
-    #   '" target="_blank" class="button" id="portal">Go to application</a>'
-    # )
-    # 
-    # success_text <- paste0(
-    #   '<div class="success"><p>"Dataset successfully uploaded, you should now be able to view this in spex"</p>',
-    #   spex_dataset_link,
-    #   '</div>'
-    # )
-    
-    success_text <- "<div class=\"success\"><p>Dataset successfully uploaded, you should now be able to view this in spex</p><a href=\"http://127.0.0.1:7369//#sryjsry\" target=\"_blank\" class=\"button\" id=\"portal\">Go to application</a></div>"
-    
-    
-    # shinyalert::shinyalert(
-    #   text = success_text,
-    #   html = TRUE
-    # )
-    
-    #temp_output <- paste0(temp_text, temp_text,temp_text,temp_text,"<br>", temp_table, "</div>")
-    
+    success_text <- "<div class=\"success\"><p>Dataset successfully uploaded, you should now be able to view this in spex</div>"
+    #<a href=\"http://127.0.0.1:7369//#sryjsry\" target=\"_blank\" class=\"button\" id=\"portal\">Go to application</a></div>"
     
     temp_output <- paste0(
       "<div style = 'overflow: auto; max-height: 80vh;'>,",
@@ -453,7 +423,6 @@ server <- function(input, output, session) {
     dataset <- dataset %>%
       tibble::column_to_rownames(feature_column)
 
-    
     # check sample names match with meta and data files ----
     n_matched_samples <- sum(colnames(dataset) %in% meta_file[[1]])
     
@@ -589,7 +558,7 @@ server <- function(input, output, session) {
       req(processed_dataset())
       req(processed_metadata())
       
-      new_folder_path <- paste0("inst/extdata/", rv$ds_name)
+      new_folder_path <- paste0(new_data_path, rv$ds_name)
       
       dir.create(new_folder_path)
       
@@ -599,10 +568,10 @@ server <- function(input, output, session) {
       saveRDS(processed_dataset(), outfile_data)
       
       # write out json file ----
-      x <- jsonlite::fromJSON(txt = "inst/extdata/updated_arrays.txt")
+      x <- jsonlite::fromJSON(txt = "inst/extdata/arrays.txt")
       new_ds <- c(rv$ds_name, rv$ds_citation, rv$ds_summary_info, rv$ds_data_type)
       x$data <- rbind(x$data, new_ds)
-      jsonlite::write_json(x, path = "inst/extdata/updated_arrays.txt")
+      jsonlite::write_json(x, path = "inst/extdata/arrays.txt")
       
       #browser()
       spex_dataset_link <- paste0(
